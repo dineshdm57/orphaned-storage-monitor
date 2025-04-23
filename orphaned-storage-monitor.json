@@ -1,0 +1,136 @@
+{
+  "created": "1745392184934",
+  "updated": "1745392184934",
+  "name": "orphaned-storage-monitor",
+  "tags": [],
+  "services": [],
+  "domains": [],
+  "template": {
+    "displayName": "orphaned-storage-monitor",
+    "trigger": {
+      "name": "trigger",
+      "valid": true,
+      "displayName": "Every Month",
+      "type": "TRIGGER",
+      "settings": {
+        "blockName": "@openops/block-schedule",
+        "blockVersion": "~0.1.5",
+        "blockType": "OFFICIAL",
+        "packageType": "REGISTRY",
+        "input": {
+          "timezone": "UTC",
+          "hour_of_the_day": 6,
+          "day_of_the_month": 1
+        },
+        "inputUiInfo": {
+          "customizedInputs": {}
+        },
+        "triggerName": "every_month"
+      },
+      "nextAction": {
+        "name": "step_1",
+        "type": "BLOCK",
+        "valid": false,
+        "settings": {
+          "input": {
+            "auth": null,
+            "limit": "50",
+            "query": "SELECT\n  bucket_name,\n  MAX(event_time) AS last_access\nFROM\n  s3_access_logs\nGROUP BY\n  bucket_name\nHAVING\n  MAX(event_time) < date_add('day', -30, current_date)",
+            "dryRun": false,
+            "database": null,
+            "outputBucket": "s3://your-output-bucket/athena/results/"
+          },
+          "blockName": "@openops/block-aws-athena",
+          "blockType": "OFFICIAL",
+          "actionName": "athena_query",
+          "inputUiInfo": {
+            "customizedInputs": {}
+          },
+          "packageType": "REGISTRY",
+          "blockVersion": "~0.0.1",
+          "errorHandlingOptions": {
+            "retryOnFailure": {
+              "value": false
+            },
+            "continueOnFailure": {
+              "value": false
+            }
+          }
+        },
+        "nextAction": {
+          "name": "step_2",
+          "type": "BLOCK",
+          "valid": false,
+          "settings": {
+            "input": {
+              "auth": null,
+              "file": null,
+              "text": {
+                "text": "The following buckets have shown no activity in the past 30 days:\n{{athena_query_result}}\nPlease review and clean up if not needed."
+              },
+              "blocks": {},
+              "threadTs": null,
+              "username": null,
+              "headerText": {
+                "headerText": null
+              },
+              "conversationId": null,
+              "blockKitEnabled": false
+            },
+            "blockName": "@openops/block-slack",
+            "blockType": "OFFICIAL",
+            "actionName": "send_slack_message",
+            "inputUiInfo": {
+              "customizedInputs": {}
+            },
+            "packageType": "REGISTRY",
+            "blockVersion": "~0.5.2",
+            "errorHandlingOptions": {
+              "retryOnFailure": {
+                "value": true
+              },
+              "continueOnFailure": {
+                "value": false
+              }
+            }
+          },
+          "nextAction": {
+            "name": "step_3",
+            "type": "BLOCK",
+            "valid": true,
+            "settings": {
+              "input": {},
+              "blockName": "@openops/block-end-flow",
+              "blockType": "OFFICIAL",
+              "actionName": "end_workflow",
+              "inputUiInfo": {
+                "customizedInputs": {}
+              },
+              "packageType": "REGISTRY",
+              "blockVersion": "~0.0.1",
+              "errorHandlingOptions": {
+                "retryOnFailure": {
+                  "value": false
+                },
+                "continueOnFailure": {
+                  "value": false
+                }
+              }
+            },
+            "displayName": "End Workflow"
+          },
+          "displayName": "Send Message"
+        },
+        "displayName": "Query Athena database"
+      }
+    },
+    "valid": false,
+    "description": ""
+  },
+  "blocks": [
+    "@openops/block-schedule",
+    "@openops/block-aws-athena",
+    "@openops/block-slack",
+    "@openops/block-end-flow"
+  ]
+}
